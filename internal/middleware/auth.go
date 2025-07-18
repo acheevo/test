@@ -7,17 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/acheevo/test/internal/services"
+	"github.com/acheevo/test/internal/auth/service"
 )
 
 // AuthMiddleware handles authentication middleware
 type AuthMiddleware struct {
-	authService *services.AuthService
+	authService *service.AuthService
 	logger      *zap.Logger
 }
 
 // NewAuthMiddleware creates a new auth middleware
-func NewAuthMiddleware(authService *services.AuthService, logger *zap.Logger) *AuthMiddleware {
+func NewAuthMiddleware(authService *service.AuthService, logger *zap.Logger) *AuthMiddleware {
 	return &AuthMiddleware{
 		authService: authService,
 		logger:      logger,

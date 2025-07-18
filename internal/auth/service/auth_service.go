@@ -1,4 +1,4 @@
-package services
+package service
 
 import (
 	"crypto/rand"
@@ -9,8 +9,10 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/acheevo/test/internal/models"
-	"github.com/acheevo/test/internal/repository"
+	"github.com/acheevo/test/internal/auth/domain"
+	"github.com/acheevo/test/internal/auth/repository"
+	userDomain "github.com/acheevo/test/internal/user/domain"
+	userRepository "github.com/acheevo/test/internal/user/repository"
 )
 
 var (
@@ -21,12 +23,12 @@ var (
 
 // AuthService handles authentication operations
 type AuthService struct {
-	userRepo    *repository.UserRepository
+	userRepo    *userRepository.UserRepository
 	sessionRepo *repository.SessionRepository
 }
 
 // NewAuthService creates a new auth service
-func NewAuthService(userRepo *repository.UserRepository, sessionRepo *repository.SessionRepository) *AuthService {
+func NewAuthService(userRepo *userRepository.UserRepository, sessionRepo *repository.SessionRepository) *AuthService {
 	return &AuthService{
 		userRepo:    userRepo,
 		sessionRepo: sessionRepo,
@@ -34,7 +36,7 @@ func NewAuthService(userRepo *repository.UserRepository, sessionRepo *repository
 }
 
 // Login authenticates a user and creates a session
-func (s *AuthService) Login(email, password string) (*models.LoginResponse, error) {
+func (s *AuthService) Login(email, password string) (*domain.LoginResponse, error) {
 	user, err := s.userRepo.GetByEmail(email)
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func (s *AuthService) Login(email, password string) (*models.LoginResponse, erro
 	}
 
 	// Create session
-	session := &models.Session{
+	session := &domain.Session{
 		ID:        uuid.New(),
 		UserID:    user.ID,
 		Token:     token,
@@ -68,14 +70,14 @@ func (s *AuthService) Login(email, password string) (*models.LoginResponse, erro
 		return nil, err
 	}
 
-	return &models.LoginResponse{
+	return &domain.LoginResponse{
 		Token: token,
 		User:  *user,
 	}, nil
 }
 
 // Register creates a new user account
-func (s *AuthService) Register(email, password, name string) (*models.User, error) {
+func (s *AuthService) Register(email, password, name string) (*userDomain.User, error) {
 	// Check if user already exists
 	existingUser, err := s.userRepo.GetByEmail(email)
 	if err != nil {
@@ -91,12 +93,12 @@ func (s *AuthService) Register(email, password, name string) (*models.User, erro
 		return nil, err
 	}
 
-	user := &models.User{
+	user := &userDomain.User{
 		ID:       uuid.New(),
 		Email:    email,
 		Password: string(hashedPassword),
 		Name:     name,
-		Role:     models.RoleUser,
+		Role:     userDomain.RoleUser,
 	}
 
 	if err := s.userRepo.Create(user); err != nil {
@@ -107,7 +109,7 @@ func (s *AuthService) Register(email, password, name string) (*models.User, erro
 }
 
 // ValidateToken validates a session token and returns the user
-func (s *AuthService) ValidateToken(token string) (*models.User, error) {
+func (s *AuthService) ValidateToken(token string) (*userDomain.User, error) {
 	session, err := s.sessionRepo.GetByToken(token)
 	if err != nil {
 		return nil, err

@@ -1,11 +1,12 @@
-package repository
+package database
 
 import (
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 
-	"github.com/acheevo/test/internal/models"
+	authDomain "github.com/acheevo/test/internal/auth/domain"
+	userDomain "github.com/acheevo/test/internal/user/domain"
 )
 
 // Database represents the database connection and operations
@@ -29,7 +30,7 @@ func NewDatabase(dsn string) (*Database, error) {
 	}
 
 	// Auto-migrate the schema
-	if err := db.AutoMigrate(&models.User{}, &models.Session{}); err != nil {
+	if err := db.AutoMigrate(&userDomain.User{}, &authDomain.Session{}); err != nil {
 		return nil, err
 	}
 

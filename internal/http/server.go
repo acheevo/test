@@ -8,36 +8,40 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/acheevo/test/internal/config"
-	"github.com/acheevo/test/internal/handlers"
+	"github.com/acheevo/test/internal/auth/repository"
+	"github.com/acheevo/test/internal/auth/service"
+	"github.com/acheevo/test/internal/auth/transport"
 	"github.com/acheevo/test/internal/middleware"
-	"github.com/acheevo/test/internal/repository"
-	"github.com/acheevo/test/internal/services"
+	"github.com/acheevo/test/internal/shared/config"
+	"github.com/acheevo/test/internal/shared/database"
+	userRepository "github.com/acheevo/test/internal/user/repository"
+	userService "github.com/acheevo/test/internal/user/service"
+	userTransport "github.com/acheevo/test/internal/user/transport"
 )
 
 type Server struct {
 	server *http.Server
 	logger *zap.Logger
-	db     *repository.Database
+	db     *database.Database
 }
 
 func NewServer(logger *zap.Logger, cfg *config.Config) (*Server, error) {
 	// Initialize database
-	db, err := repository.NewDatabase(cfg.GetDSN())
+	db, err := database.NewDatabase(cfg.GetDSN())
 	if err != nil {
 		return nil, err
 	}
 
 	// Initialize repositories
-	userRepo := repository.NewUserRepository(db)
+	userRepo := userRepository.NewUserRepository(db)
 	sessionRepo := repository.NewSessionRepository(db)
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, sessionRepo)
-	userService := services.NewUserService(userRepo)
+	authSvc := service.NewAuthService(userRepo, sessionRepo)
+	userSvc := userService.NewUserService(userRepo)
 
 	// Initialize middleware
-	authMiddleware := middleware.NewAuthMiddleware(authService, logger)
+	authMiddleware := middleware.NewAuthMiddleware(authSvc, logger)
 
 	// Set Gin mode
 	if cfg.Environment == "production" {
@@ -50,7 +54,9 @@ func NewServer(logger *zap.Logger, cfg *config.Config) (*Server, error) {
 	router.Use(func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With")
+		allowedHeaders := "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, " +
+			"Authorization, accept, origin, Cache-Control, X-Requested-With"
+		c.Writer.Header().Set("Access-Control-Allow-Headers", allowedHeaders)
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 
 		if c.Request.Method == "OPTIONS" {
@@ -62,7 +68,7 @@ func NewServer(logger *zap.Logger, cfg *config.Config) (*Server, error) {
 	})
 
 	// Setup routes
-	setupRoutes(router, logger, userService, authService, authMiddleware)
+	setupRoutes(router, logger, userSvc, authSvc, authMiddleware)
 
 	server := &http.Server{
 		Addr:         cfg.HTTPAddr,
@@ -95,8 +101,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func setupRoutes(
 	router *gin.Engine,
 	logger *zap.Logger,
-	userService *services.UserService,
-	authService *services.AuthService,
+	userSvc *userService.UserService,
+	authSvc *service.AuthService,
 	authMiddleware *middleware.AuthMiddleware,
 ) {
 	// Health check
@@ -108,7 +114,7 @@ func setupRoutes(
 	api := router.Group("/api")
 	{
 		// Auth handlers
-		authHandler := handlers.NewAuthHandler(authService, logger)
+		authHandler := transport.NewAuthHandler(authSvc, logger)
 		auth := api.Group("/auth")
 		{
 			auth.POST("/login", authHandler.Login)
@@ -117,7 +123,7 @@ func setupRoutes(
 		}
 
 		// User handlers
-		userHandler := handlers.NewUserHandler(userService, logger)
+		userHandler := userTransport.NewUserHandler(userSvc, logger)
 
 		// Protected routes with authentication middleware
 		protected := api.Group("/users")

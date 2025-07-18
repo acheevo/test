@@ -11,8 +11,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/acheevo/test/internal/config"
 	"github.com/acheevo/test/internal/http"
+	"github.com/acheevo/test/internal/shared/config"
 )
 
 func main() {

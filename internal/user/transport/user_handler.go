@@ -1,4 +1,4 @@
-package handlers
+package transport
 
 import (
 	"net/http"
@@ -7,18 +7,18 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/zap"
 
-	"github.com/acheevo/test/internal/models"
-	"github.com/acheevo/test/internal/services"
+	"github.com/acheevo/test/internal/user/domain"
+	"github.com/acheevo/test/internal/user/service"
 )
 
 // UserHandler handles user endpoints
 type UserHandler struct {
-	userService *services.UserService
+	userService *service.UserService
 	logger      *zap.Logger
 }
 
 // NewUserHandler creates a new user handler
-func NewUserHandler(userService *services.UserService, logger *zap.Logger) *UserHandler {
+func NewUserHandler(userService *service.UserService, logger *zap.Logger) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 		logger:      logger,
@@ -44,8 +44,12 @@ func (h *UserHandler) GetUsers(c *gin.Context) {
 		return
 	}
 
-	user := currentUser.(*models.User)
-	if user.Role != models.RoleAdmin {
+	user, ok := currentUser.(*domain.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user type in context"})
+		return
+	}
+	if user.Role != domain.RoleAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
@@ -92,19 +96,17 @@ func (h *UserHandler) CreateUser(c *gin.Context) {
 		return
 	}
 
-	user := currentUser.(*models.User)
-	if user.Role != models.RoleAdmin {
+	user, ok := currentUser.(*domain.User)
+	if !ok {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user type in context"})
+		return
+	}
+	if user.Role != domain.RoleAdmin {
 		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
 		return
 	}
 
-	var req struct {
-		Email    string           `json:"email" binding:"required,email"`
-		Password string           `json:"password" binding:"required,min=6"`
-		Name     string           `json:"name" binding:"required"`
-		Role     models.UserRole  `json:"role" binding:"required"`
-	}
-
+	var req domain.CreateUserRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return

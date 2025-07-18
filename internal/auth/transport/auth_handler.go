@@ -1,4 +1,4 @@
-package handlers
+package transport
 
 import (
 	"net/http"
@@ -6,18 +6,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/acheevo/test/internal/models"
-	"github.com/acheevo/test/internal/services"
+	"github.com/acheevo/test/internal/auth/domain"
+	"github.com/acheevo/test/internal/auth/service"
 )
 
 // AuthHandler handles authentication endpoints
 type AuthHandler struct {
-	authService *services.AuthService
+	authService *service.AuthService
 	logger      *zap.Logger
 }
 
 // NewAuthHandler creates a new auth handler
-func NewAuthHandler(authService *services.AuthService, logger *zap.Logger) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, logger *zap.Logger) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
 		logger:      logger,
@@ -26,7 +26,7 @@ func NewAuthHandler(authService *services.AuthService, logger *zap.Logger) *Auth
 
 // Login handles user login
 func (h *AuthHandler) Login(c *gin.Context) {
-	var req models.LoginRequest
+	var req domain.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -44,7 +44,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 // Register handles user registration
 func (h *AuthHandler) Register(c *gin.Context) {
-	var req models.RegisterRequest
+	var req domain.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -62,14 +62,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 // Logout handles user logout
 func (h *AuthHandler) Logout(c *gin.Context) {
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
+	token := c.GetHeader("Authorization")
+	if token == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Authorization header required"})
 		return
 	}
 
-	// Extract token from "Bearer <token>"
-	token := authHeader[7:] // Remove "Bearer " prefix
+	// Remove "Bearer " prefix if present
+	if len(token) > 7 && token[:7] == "Bearer " {
+		token = token[7:]
+	}
 
 	if err := h.authService.Logout(token); err != nil {
 		h.logger.Error("Logout failed", zap.Error(err))

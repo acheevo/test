@@ -1,11 +1,11 @@
-package services
+package service
 
 import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 
-	"github.com/acheevo/test/internal/models"
-	"github.com/acheevo/test/internal/repository"
+	"github.com/acheevo/test/internal/user/domain"
+	"github.com/acheevo/test/internal/user/repository"
 )
 
 // UserService handles user-related business logic
@@ -19,29 +19,29 @@ func NewUserService(userRepo *repository.UserRepository) *UserService {
 }
 
 // GetByID retrieves a user by ID
-func (s *UserService) GetByID(id uuid.UUID) (*models.User, error) {
+func (s *UserService) GetByID(id uuid.UUID) (*domain.User, error) {
 	return s.userRepo.GetByID(id)
 }
 
 // GetByEmail retrieves a user by email
-func (s *UserService) GetByEmail(email string) (*models.User, error) {
+func (s *UserService) GetByEmail(email string) (*domain.User, error) {
 	return s.userRepo.GetByEmail(email)
 }
 
 // GetAll retrieves all users
-func (s *UserService) GetAll() ([]models.User, error) {
+func (s *UserService) GetAll() ([]domain.User, error) {
 	return s.userRepo.GetAll()
 }
 
 // Create creates a new user
-func (s *UserService) Create(email, password, name string, role models.UserRole) (*models.User, error) {
+func (s *UserService) Create(email, password, name string, role domain.UserRole) (*domain.User, error) {
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	user := &models.User{
+	user := &domain.User{
 		ID:       uuid.New(),
 		Email:    email,
 		Password: string(hashedPassword),
@@ -57,7 +57,7 @@ func (s *UserService) Create(email, password, name string, role models.UserRole)
 }
 
 // Update updates a user
-func (s *UserService) Update(user *models.User) error {
+func (s *UserService) Update(user *domain.User) error {
 	return s.userRepo.Update(user)
 }
 

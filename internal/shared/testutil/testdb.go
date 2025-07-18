@@ -10,13 +10,13 @@ import (
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"github.com/acheevo/test/internal/repository"
+	"github.com/acheevo/test/internal/shared/database"
 )
 
 // TestDB represents a test database container
 type TestDB struct {
 	Container *postgres.PostgresContainer
-	Database  *repository.Database
+	Database  *database.Database
 	DSN       string
 }
 
@@ -56,7 +56,7 @@ func SetupTestDB(t *testing.T) *TestDB {
 		host, port.Port())
 
 	// Create database connection
-	db, err := repository.NewDatabase(dsn)
+	db, err := database.NewDatabase(dsn)
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
